@@ -1,19 +1,14 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  BarChart3,
   ClipboardList,
-  FileSearch,
   Home,
   Landmark,
   LayoutDashboard,
-  Map,
   MessageSquare,
   Palette,
   PlusCircle,
-  Search,
   Settings,
   Shield,
-  Sparkles,
 } from "lucide-react";
 
 export interface NavItem {

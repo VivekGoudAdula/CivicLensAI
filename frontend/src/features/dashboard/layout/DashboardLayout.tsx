@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, Outlet } from "react-router-dom";
-import { ArrowLeft, Menu, Radio, LogOut } from "lucide-react";
+import { Outlet } from "react-router-dom";
+import { Menu, Radio, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { ContentWrapper } from "@/components/layout/ContentWrapper";

@@ -1,5 +1,4 @@
 import { Menu, LogOut } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import { NotificationMenu } from "@/components/navigation/NotificationMenu";
 import { UserMenu } from "@/components/navigation/UserMenu";

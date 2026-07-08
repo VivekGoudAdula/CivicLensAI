@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowRight, Landmark, Sparkles, Send, Activity, ShieldAlert, Cpu } from "lucide-react";
+import { ArrowRight, Landmark, Sparkles, Send, Activity, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { env } from "@/config/env";
 

@@ -77,16 +77,20 @@ export async function apiClient<T>(
   const { body, params, headers, ...rest } = options;
 
   const token = localStorage.getItem("civiclens_token");
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  const requestHeaders = new Headers(headers as HeadersInit);
+  if (!requestHeaders.has("Content-Type")) {
+    requestHeaders.set("Content-Type", "application/json");
+  }
+  if (!requestHeaders.has("Accept")) {
+    requestHeaders.set("Accept", "application/json");
+  }
+  if (token && !requestHeaders.has("Authorization")) {
+    requestHeaders.set("Authorization", `Bearer ${token}`);
+  }
 
   const response = await fetch(buildUrl(path, params), {
     ...rest,
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      ...authHeader,
-      ...headers,
-    },
+    headers: requestHeaders,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
