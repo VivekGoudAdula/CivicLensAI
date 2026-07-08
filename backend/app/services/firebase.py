@@ -50,6 +50,12 @@ def _resolve_credentials(settings: Settings) -> credentials.Base:
                 raise ConfigurationError(
                     f"FIREBASE_SERVICE_ACCOUNT_JSON contains invalid JSON: {parse_err}"
                 ) from exc
+        # VERY IMPORTANT: Replace literal '\n' text with actual newlines for the PEM key parser
+        if isinstance(service_account_info, dict) and "private_key" in service_account_info:
+            pk = service_account_info["private_key"]
+            if isinstance(pk, str):
+                service_account_info["private_key"] = pk.replace("\\n", "\n")
+
         return credentials.Certificate(service_account_info)
 
     if settings.firebase_service_account_path:
