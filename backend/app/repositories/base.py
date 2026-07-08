@@ -136,35 +136,50 @@ class BaseRepository(ABC, Generic[TCreate, TUpdate, TResponse, TFilters]):
         filters: TFilters | None = None,
         pagination: PaginationParams | None = None,
     ) -> PaginatedResult[TResponse]:
-        """List documents with optional filters and cursor pagination."""
+        """List documents with optional filters and in-memory sorting/pagination to bypass composite index limits."""
         pagination = pagination or PaginationParams()
         query = self.collection
 
         if filters is not None:
             query = self._apply_filters(query, filters)
 
-        direction = (
-            firestore.Query.ASCENDING
-            if pagination.order_direction == "asc"
-            else firestore.Query.DESCENDING
-        )
-        query = query.order_by(pagination.order_by, direction=direction)
-
-        if pagination.cursor:
-            cursor_snapshot = self.collection.document(pagination.cursor).get()
-            if cursor_snapshot.exists:
-                query = query.start_after(cursor_snapshot)
-
-        query = query.limit(pagination.limit + 1)
+        # Stream all matching documents (bypassing Firestore order_by/limit to avoid index errors)
         snapshots = list(query.stream())
+        items = [self._to_response(snapshot) for snapshot in snapshots]
 
-        has_more = len(snapshots) > pagination.limit
-        page_snapshots = snapshots[: pagination.limit]
-        items = [self._to_response(snapshot) for snapshot in page_snapshots]
-        next_cursor = page_snapshots[-1].id if has_more and page_snapshots else None
+        # Sort in memory
+        reverse = pagination.order_direction == "desc"
+        def get_sort_key(item: Any) -> Any:
+            val = item
+            for part in pagination.order_by.split("."):
+                if val is None:
+                    break
+                val = getattr(val, part, None)
+            if val is None:
+                return datetime.min if not reverse else datetime.max
+            return val
+
+        try:
+            items.sort(key=get_sort_key, reverse=reverse)
+        except Exception:
+            logger.exception("Error sorting items in memory")
+
+        # Paginate in memory
+        total = len(items)
+        start = 0
+        if pagination.cursor:
+            # Find matching document index to start after
+            for idx, item in enumerate(items):
+                if getattr(item, "id", None) == pagination.cursor:
+                    start = idx + 1
+                    break
+
+        page_items = items[start : start + pagination.limit]
+        has_more = (start + pagination.limit) < total
+        next_cursor = page_items[-1].id if has_more and page_items else None
 
         return PaginatedResult(
-            items=items,
+            items=page_items,
             limit=pagination.limit,
             has_more=has_more,
             next_cursor=next_cursor,
@@ -176,7 +191,7 @@ class BaseRepository(ABC, Generic[TCreate, TUpdate, TResponse, TFilters]):
         filters: TFilters | None = None,
         pagination: PaginationParams | None = None,
     ) -> PaginatedResult[TResponse]:
-        """Search documents using text and structured filters."""
+        """Search documents using text and structured filters with in-memory sorting/pagination."""
         pagination = pagination or PaginationParams()
         normalized_query = query_text.strip()
 
@@ -189,27 +204,9 @@ class BaseRepository(ABC, Generic[TCreate, TUpdate, TResponse, TFilters]):
 
         firestore_query = self._apply_text_search(firestore_query, normalized_query)
 
-        direction = (
-            firestore.Query.ASCENDING
-            if pagination.order_direction == "asc"
-            else firestore.Query.DESCENDING
-        )
-        firestore_query = firestore_query.order_by(
-            pagination.order_by,
-            direction=direction,
-        )
-
-        if pagination.cursor:
-            cursor_snapshot = self.collection.document(pagination.cursor).get()
-            if cursor_snapshot.exists:
-                firestore_query = firestore_query.start_after(cursor_snapshot)
-
-        firestore_query = firestore_query.limit(pagination.limit + 1)
+        # Stream all matching search documents to prevent index exceptions
         snapshots = list(firestore_query.stream())
-
-        has_more = len(snapshots) > pagination.limit
-        page_snapshots = snapshots[: pagination.limit]
-        items = [self._to_response(snapshot) for snapshot in page_snapshots]
+        items = [self._to_response(snapshot) for snapshot in snapshots]
 
         if normalized_query:
             items = [
@@ -218,10 +215,38 @@ class BaseRepository(ABC, Generic[TCreate, TUpdate, TResponse, TFilters]):
                 if self._matches_search_text(item, normalized_query)
             ]
 
-        next_cursor = page_snapshots[-1].id if has_more and page_snapshots else None
+        # Sort in memory
+        reverse = pagination.order_direction == "desc"
+        def get_sort_key(item: Any) -> Any:
+            val = item
+            for part in pagination.order_by.split("."):
+                if val is None:
+                    break
+                val = getattr(val, part, None)
+            if val is None:
+                return datetime.min if not reverse else datetime.max
+            return val
+
+        try:
+            items.sort(key=get_sort_key, reverse=reverse)
+        except Exception:
+            logger.exception("Error sorting items in memory")
+
+        # Paginate in memory
+        total = len(items)
+        start = 0
+        if pagination.cursor:
+            for idx, item in enumerate(items):
+                if getattr(item, "id", None) == pagination.cursor:
+                    start = idx + 1
+                    break
+
+        page_items = items[start : start + pagination.limit]
+        has_more = (start + pagination.limit) < total
+        next_cursor = page_items[-1].id if has_more and page_items else None
 
         return PaginatedResult(
-            items=items,
+            items=page_items,
             limit=pagination.limit,
             has_more=has_more,
             next_cursor=next_cursor,
