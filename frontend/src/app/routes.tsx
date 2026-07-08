@@ -16,16 +16,44 @@ import { LoadingPage } from "@/pages/LoadingPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
-const LandingPage = lazy(() =>
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  importFn: () => Promise<{ default: T } | { [key: string]: any }>
+): React.LazyExoticComponent<T> {
+  return lazy(async () => {
+    try {
+      const module = await importFn();
+      if ("default" in module) {
+        return { default: module.default };
+      }
+      const keys = Object.keys(module);
+      return { default: module[keys[0]] as T };
+    } catch (error: any) {
+      if (
+        error?.message?.includes("Failed to fetch dynamically imported module") ||
+        /dynamic.*import/i.test(error?.message || "")
+      ) {
+        const hasReloaded = sessionStorage.getItem("page_reloaded_on_chunk_fail");
+        if (!hasReloaded) {
+          sessionStorage.setItem("page_reloaded_on_chunk_fail", "true");
+          window.location.reload();
+          return new Promise(() => {});
+        }
+      }
+      throw error;
+    }
+  });
+}
+
+const LandingPage = lazyWithRetry(() =>
   import("@/pages/LandingPage").then((module) => ({ default: module.LandingPage })),
 );
-const AdminLoginPage = lazy(() =>
+const AdminLoginPage = lazyWithRetry(() =>
   import("@/pages/AdminLoginPage").then((module) => ({ default: module.AdminLoginPage })),
 );
-const SignUpPage = lazy(() =>
+const SignUpPage = lazyWithRetry(() =>
   import("@/pages/SignUpPage").then((module) => ({ default: module.SignUpPage })),
 );
-const HomePage = lazy(() =>
+const HomePage = lazyWithRetry(() =>
   import("@/pages/HomePage").then((module) => ({ default: module.HomePage })),
 );
 const CivicInsightsPage = lazy(() =>
