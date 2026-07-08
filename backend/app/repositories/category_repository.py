@@ -65,10 +65,11 @@ class CategoryRepository(
         """Return all active categories ordered by display_order."""
         snapshots = list(
             self.collection.where(filter=FieldFilter("is_active", "==", True))
-            .order_by("display_order")
             .stream()
         )
-        return [self._to_response(snapshot) for snapshot in snapshots]
+        results = [self._to_response(snapshot) for snapshot in snapshots]
+        results.sort(key=lambda x: getattr(x, "display_order", 0) or 0)
+        return results
 
     def get_by_slug(self, slug: str) -> CategoryResponse | None:
         """Retrieve a category by slug."""
