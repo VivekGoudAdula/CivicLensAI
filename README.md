@@ -10,6 +10,12 @@ Built for **Google Cloud – Build with AI: Code for Communities 2026**
 
 ---
 
+## 🔗 Live Links & Demo
+- **Live Application**: [civiclensai-buildwithai.vercel.app](https://civiclensai-buildwithai.vercel.app/)
+- **Video Demonstration**: [Google Drive Link](https://drive.google.com/file/d/1-hutb2so4OJw4tqZ_8mPTYDd_yULtcak/view?usp=sharing)
+
+---
+
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi)
 ![Firebase](https://img.shields.io/badge/Firebase-Enabled-FFCA28?style=for-the-badge&logo=firebase)
