@@ -12,6 +12,14 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud import firestore as gcloud_firestore
 
+# Fix google-api-core DatetimeWithNanoseconds bug causing Firestore update failures
+try:
+    from google.api_core.datetime_helpers import DatetimeWithNanoseconds
+    if not hasattr(DatetimeWithNanoseconds, "_nanosecond"):
+        DatetimeWithNanoseconds._nanosecond = property(lambda self: getattr(self, "nanosecond", 0))
+except ImportError:
+    pass
+
 from app.core.config import Settings
 from app.core.exceptions import ConfigurationError
 
