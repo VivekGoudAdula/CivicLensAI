@@ -41,7 +41,11 @@ class Settings(BaseSettings):
         NoDecode,
         BeforeValidator(_parse_cors_origins),
     ] = Field(
-        default=["http://localhost:5173", "http://127.0.0.1:5173"],
+        default=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "https://civiclensai-buildwithai.vercel.app",
+        ],
         alias="CORS_ORIGINS",
     )
 
