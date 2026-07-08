@@ -26,12 +26,30 @@ _firebase_initialized: bool = False
 
 def _resolve_credentials(settings: Settings) -> credentials.Base:
     if settings.firebase_service_account_json:
+        raw_json = settings.firebase_service_account_json.strip()
+        
+        # Remove surrounding quotes if the environment manager preserved them
+        if raw_json.startswith('"') and raw_json.endswith('"'):
+            raw_json = raw_json[1:-1]
+        elif raw_json.startswith("'") and raw_json.endswith("'"):
+            raw_json = raw_json[1:-1]
+
+        # Standardise JSON escapes (often double-escaped or raw backslashes in key strings)
         try:
-            service_account_info = json.loads(settings.firebase_service_account_json)
-        except json.JSONDecodeError as exc:
-            raise ConfigurationError(
-                "FIREBASE_SERVICE_ACCOUNT_JSON contains invalid JSON"
-            ) from exc
+            service_account_info = json.loads(raw_json)
+        except json.JSONDecodeError as parse_err:
+            try:
+                # Replace escaped newlines with actual newlines temporarily
+                sanitized = raw_json.replace('\\n', '\n')
+                # Safely escape any stray backslashes
+                sanitized = sanitized.replace('\\', '\\\\')
+                # Restore the newlines as valid JSON escaped newlines
+                sanitized = sanitized.replace('\n', '\\n')
+                service_account_info = json.loads(sanitized)
+            except Exception as exc:
+                raise ConfigurationError(
+                    f"FIREBASE_SERVICE_ACCOUNT_JSON contains invalid JSON: {parse_err}"
+                ) from exc
         return credentials.Certificate(service_account_info)
 
     if settings.firebase_service_account_path:
